@@ -10,11 +10,12 @@ if (!DB_URI) {
 
 const connectToDB = async () => {
   try {
-    await mongoose.connect(DB_URI);
-    mongoose.connection.once("open", () => {
+    if (mongoose.connection.readyState >= 1) {
       initGridFS();
-      console.log("GridFS initialized");
-    });
+      return;
+    }
+    await mongoose.connect(DB_URI);
+    initGridFS();
     console.log(`Connected to DB successfully in ${NODE_ENV} mode`);
   } catch (error) {
     console.error("Error connecting to MongoDB:", error);
