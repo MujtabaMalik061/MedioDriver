@@ -4,7 +4,7 @@ import "./assets/style/Style.css";
 import LandingPage from "./pages/LandingPage.jsx";
 import SignIn from "./auth/SignIn.jsx";
 import SignUp from "./auth/SignUp.jsx";
-import { PublicRoute, ProtectedRoute } from "./routes/RouteGuards.jsx";
+import { PublicRoute, ProtectedRoute, AdminRoute } from "./routes/RouteGuards.jsx";
 import AppLayout from "./layout/AppLayout.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import UploadMedia from "./pages/UploadMedia.jsx";
@@ -13,6 +13,8 @@ import APISection from "./pages/APISection.jsx";
 import Settings from "./pages/Settings.jsx";
 import PaymentSuccess from "./components/PaymentSuccess.jsx";
 import Payments from "./pages/Payments.jsx";
+import AdminUsers from "./pages/admin/AdminUsers.jsx";
+import AdminUserDetail from "./pages/admin/AdminUserDetail.jsx";
 
 const App = () => {
   return (
@@ -47,7 +49,7 @@ const App = () => {
           <Route
             path="/upload-media"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute role={["user", "premium"]}>
                 <UploadMedia />
               </ProtectedRoute>
             }
@@ -90,6 +92,22 @@ const App = () => {
               <ProtectedRoute>
                 <Settings />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <AdminRoute>
+                <AdminUsers />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/users/:userId"
+            element={
+              <AdminRoute>
+                <AdminUserDetail />
+              </AdminRoute>
             }
           />
         </Route>

@@ -188,6 +188,9 @@ export const TopBar = ({ title = "", updateCredits = null }) => {
   const [isCreadit, setIsCreadit] = useState(false);
   const [isAddMore, setIsAddMore] = useState(false);
 
+  const isPremium = currentUser?.role === "premium";
+  const isAdmin = currentUser?.role === "admin";
+
   const creadit =
     updateCredits !== null ? updateCredits : currentUser?.credits || 0;
 
@@ -206,19 +209,25 @@ export const TopBar = ({ title = "", updateCredits = null }) => {
       <div className="custom-topbar-container">
         <div className="custom-topbar-inner-container">
           <h2 className="custom-topbar-title">{title}</h2>
-          <h4
-            onClick={() => setIsCreadit(true)}
-            className="custom-topbar-credit"
-            style={{ color: colorSuggestion() }}
-          >
-            <span className="icon">
-              <CirclePoundSterling fill="#f8a314" color="#f7d028" />
+          {isAdmin ? (
+            <span className="role-badge admin" style={{ fontSize: "13px", padding: "5px 14px" }}>
+              Admin
             </span>
-            {creadit} credits
-          </h4>
+          ) : (
+            <h4
+              onClick={() => setIsCreadit(true)}
+              className="custom-topbar-credit"
+              style={{ color: isPremium ? "#a855f7" : colorSuggestion() }}
+            >
+              <span className="icon">
+                <CirclePoundSterling fill="#f8a314" color="#f7d028" />
+              </span>
+              {isPremium ? "∞ Unlimited" : `${creadit} credits`}
+            </h4>
+          )}
         </div>
       </div>
-      {isCreadit && (
+      {isCreadit && !isAdmin && (
         <div className="model-overlay">
           <div className="model-content">
             <div className="model-header">
@@ -238,6 +247,14 @@ export const TopBar = ({ title = "", updateCredits = null }) => {
             <div className="model-content-container">
               {isAddMore ? (
                 <PrincingCard />
+              ) : isPremium ? (
+                <div style={{ width: "100%", textAlign: "center", padding: "20px 0" }}>
+                  <div style={{ fontSize: "40px", color: "#a855f7", marginBottom: "12px" }}>∞</div>
+                  <h2 style={{ marginBottom: "10px" }}>Premium Plan</h2>
+                  <p style={{ color: "var(--muted-foreground)", lineHeight: 1.6 }}>
+                    You have <strong style={{ color: "#a855f7" }}>Unlimited</strong> access. No credits required.
+                  </p>
+                </div>
               ) : (
                 <>
                   <h2 style={{ width: "100%", textAlign: "center" }}>

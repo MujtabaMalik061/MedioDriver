@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import "../assets/style/Dashboard.css";
-import { Upload, Eye, HardDrive, Key } from "lucide-react";
+import "../assets/style/Admin.css";
+import { Upload, Eye, HardDrive, Key, Users } from "lucide-react";
 import Loader from "../components/Loader";
 import { BarsChart, PiesChart } from "../components/DashboardCharts";
 import {
@@ -12,8 +13,117 @@ import {
   getRecentUploads,
 } from "../services/dashboard.services.js";
 import { timeAgo, formatFileSize } from "../utils/Helper.js";
+import { useAuth } from "../context/AuthContext";
+import { adminGetDashboardStats, adminGetAllUsers } from "../services/admin.services";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
-const Dashboard = () => {
+const UserBadge = ({ user }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+    <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "var(--primary-hover)", border: "1.5px solid var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "700", color: "var(--primary)", flexShrink: 0 }}>
+      {user?.name?.charAt(0)?.toUpperCase() || "?"}
+    </div>
+    <div>
+      <div style={{ fontSize: "13px", fontWeight: "500" }}>{user?.name || "—"}</div>
+      <div style={{ fontSize: "11px", color: "var(--muted-foreground)" }}>{user?.email || ""}</div>
+    </div>
+  </div>
+);
+
+const AdminDashboard = () => {
+  const navigate = useNavigate();
+  const [stats, setStats] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const LIMIT = 8;
+
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [statsRes, usersRes] = await Promise.all([
+        adminGetDashboardStats(),
+        adminGetAllUsers(page, LIMIT, debouncedSearch),
+      ]);
+      setStats(statsRes);
+      setUsers(usersRes.users || []);
+      setTotal(usersRes.total || 0);
+    } catch (err) {
+      toast.error("Failed to load admin dashboard");
+    } finally {
+      setLoading(false);
+    }
+  }, [page, debouncedSearch]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const totalPages = Math.ceil(total / LIMIT);
+
+  return (
+    <div className="page-container">
+      <div className="dashboard-stats-row">
+        <StatesCard iconBg="var(--primary-hover)" iconColor="var(--primary)" title="Total Users" value={stats?.totalUsers ?? 0} icon={Users} loading={loading} />
+        <StatesCard iconBg="#eaf3fc" iconColor="#308ce8" title="Total Media" value={stats?.totalMedia ?? 0} icon={Upload} loading={loading} />
+        <StatesCard iconBg="#fef1e7" iconColor="#f97415" title="Total Storage" value={stats?.totalStorage ?? "0 B"} icon={HardDrive} loading={loading} />
+        <StatesCard iconBg="var(--primary-hover)" iconColor="var(--primary)" title="Total API Calls" value={stats?.totalApiCalls ?? 0} icon={Key} loading={loading} />
+      </div>
+
+      <div className="chart-container">
+        <div className="chart-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h2>All Users ({total})</h2>
+          <input type="text" className="custom-input" placeholder="Search by name or email..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ maxWidth: "260px" }} />
+        </div>
+
+        <div className="admin-table-wrap" style={{ marginTop: "12px" }}>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Credits</th>
+                <th>Joined</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={5} style={{ textAlign: "center", padding: "40px", color: "var(--muted-foreground)" }}>Loading...</td></tr>
+              ) : users.length === 0 ? (
+                <tr><td colSpan={5} style={{ textAlign: "center", padding: "40px", color: "var(--muted-foreground)" }}>No users found.</td></tr>
+              ) : users.map((u) => (
+                <tr key={u._id} onClick={() => navigate(`/admin/users/${u._id}`)} style={{ cursor: "pointer" }}>
+                  <td><UserBadge user={u} /></td>
+                  <td><span className={`role-badge ${u.role}`}>{u.role}</span></td>
+                  <td><span className={`status-badge ${u.status}`}>{u.status}</span></td>
+                  <td>{u.role === "premium" ? "∞" : u.credits ?? 0}</td>
+                  <td style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {totalPages > 1 && (
+          <div className="admin-pagination">
+            <button className="admin-btn admin-btn-primary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Prev</button>
+            <span>Page {page} of {totalPages}</span>
+            <button className="admin-btn admin-btn-primary" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const UserDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [states, setStates] = useState([]);
   const [weeklyUploads, setWeeklyUploads] = useState([]);
@@ -142,6 +252,12 @@ const loadDashboardData = async () => {
       </div>
     </div>
   );
+};
+
+const Dashboard = () => {
+  const { currentUser } = useAuth();
+  if (currentUser?.role === "admin") return <AdminDashboard />;
+  return <UserDashboard />;
 };
 
 export default Dashboard;

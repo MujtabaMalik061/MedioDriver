@@ -10,6 +10,7 @@ import mediaRoute from "./routes/media.routes.js";
 import keyRoute from "./routes/apiKey.routes.js";
 import paymentRoute from "./routes/payment.routes.js";
 import dashboardRoute from "./routes/dashboard.routes.js";
+import adminRoute from "./routes/admin.routes.js";
 import connectToDB from "./database/mongodb.js";
 
 const app = express();
@@ -27,6 +28,7 @@ app.use("/api/media", mediaRoute);
 app.use("/api/v1/key", keyRoute);
 app.use("/api/payment", paymentRoute);
 app.use("/api/dashboard", dashboardRoute);
+app.use("/api/admin", adminRoute);
 
 app.get("/", (req, res) => {
   res.send("Welcome to the Server API");

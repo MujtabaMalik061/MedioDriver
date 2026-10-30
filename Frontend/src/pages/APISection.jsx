@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import "../assets/style/APISection.css";
+import "../assets/style/Admin.css";
 import { Key, Eye, Copy, Trash2, EyeOff } from "lucide-react";
 import { Input, TopBar } from "../components/CustomComponents";
 import { toast } from "sonner";
@@ -12,8 +13,176 @@ import {
 } from "../services/key.services";
 import Loader from "../components/Loader";
 import { formateDate, handleCopy, timeAgo } from "../utils/Helper";
+import { useAuth } from "../context/AuthContext";
+import { adminGetApiStats } from "../services/admin.services";
 
-const APISection = () => {
+const CODE_LINES = [
+  `import axios from "axios";`,
+  ``,
+  `export const uploadByApi = async (files) => {`,
+  `  if (!files || files.length === 0) throw new Error("No files selected");`,
+  `  if (files.length > 5) throw new Error("Maximum 5 files at a time");`,
+  ``,
+  `  const formData = new FormData();`,
+  `  files.forEach((file) => formData.append("files", file));`,
+  ``,
+  `  try {`,
+  `    const res = await axios.post(`,
+  "    `${import.meta.env.VITE_API_URL}/api/v1/key/upload-media`,",
+  `    formData,`,
+  `    {`,
+  `      headers: {`,
+  `        apikey: "md_sk_••••••••••••••••", // Your API key`,
+  `      },`,
+  `    }`,
+  `  );`,
+  `  // { message, files, creditsUsed, remainingCredits }`,
+  `  return res.data;`,
+  `  } catch (err) {`,
+  `    console.error("Upload error:", err.response?.data || err.message);`,
+  `    throw err.response?.data || err;`,
+  `  }`,
+  `};`,
+];
+
+const KEYWORDS = ["import", "export", "const", "async", "await", "return", "throw", "if", "new", "try", "catch"];
+const FN_NAMES = ["uploadByApi", "axios\\.post", "console\\.error"];
+
+function highlightLine(line) {
+  if (line.trim().startsWith("//")) {
+    return <span className="qs-cmt">{line}</span>;
+  }
+
+  const parts = [];
+  let remaining = line;
+  let key = 0;
+
+  // Tokenise: strings first, then keywords, then fn names, then numbers
+  const stringRegex = /("(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`|'(?:[^'\\]|\\.)*')/;
+  const kwRegex = new RegExp(`\\b(${KEYWORDS.join("|")})\\b`);
+  const fnRegex = new RegExp(`(${FN_NAMES.join("|")})`);
+  const numRegex = /\b(\d+)\b/;
+
+  const combinedRegex = new RegExp(
+    `(${stringRegex.source}|${kwRegex.source}|${fnRegex.source}|${numRegex.source})`
+  );
+
+  const tokens = remaining.split(combinedRegex).filter((t) => t !== undefined && t !== "");
+
+  return tokens.map((token, i) => {
+    if (stringRegex.test(token) && token === remaining.match(stringRegex)?.[0]) {
+      // handled below
+    }
+    if (/"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`|'(?:[^'\\]|\\.)*'/.test(token)) {
+      return <span key={i} className="qs-str">{token}</span>;
+    }
+    if (new RegExp(`^(${KEYWORDS.join("|")})$`).test(token)) {
+      return <span key={i} className="qs-kw">{token}</span>;
+    }
+    if (new RegExp(`^(${FN_NAMES.join("|")})$`).test(token)) {
+      return <span key={i} className="qs-fn">{token}</span>;
+    }
+    if (/^\d+$/.test(token)) {
+      return <span key={i} className="qs-num">{token}</span>;
+    }
+    return <span key={i}>{token}</span>;
+  });
+}
+
+const CodeBlock = ({ codeRef, onCopy }) => {
+  return (
+    <div className="qs-block">
+      <div className="qs-header">
+        <span className="qs-lang">JavaScript</span>
+        <button onClick={onCopy} className="qs-copy-btn">
+          <Copy size={14} />
+          Copy
+        </button>
+      </div>
+      <div className="qs-body">
+        <div className="qs-lines">
+          {CODE_LINES.map((_, i) => (
+            <div key={i}>{i + 1}</div>
+          ))}
+        </div>
+        <pre className="qs-code" ref={codeRef}>
+          {CODE_LINES.map((line, i) => (
+            <div key={i}>{highlightLine(line)}</div>
+          ))}
+        </pre>
+      </div>
+    </div>
+  );
+};
+
+const AdminApiSection = () => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    adminGetApiStats()
+      .then(setData)
+      .catch(() => toast.error("Failed to load API stats"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <>
+      <TopBar title="API Section" />
+      <div className="api-container">
+        <div className="api-stats">
+          <StateTabs title="Platform Calls Today" value={loading ? "…" : (data?.todayCalls ?? 0)} />
+          <StateTabs title="Platform Monthly" value={loading ? "…" : (data?.monthCalls ?? 0)} />
+          <StateTabs title="Active Users" value={loading ? "…" : (data?.userStats?.length ?? 0)} />
+        </div>
+
+        <div className="api-keys-section">
+          <div className="api-keys-header">
+            <h3>API Usage by User</h3>
+          </div>
+          {loading ? (
+            <Loader style={{ height: "200px" }} />
+          ) : data?.userStats?.length > 0 ? (
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>Total API Calls</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.userStats.map((item, i) => (
+                    <tr key={i}>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "var(--primary-hover)", border: "1.5px solid var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "700", color: "var(--primary)", flexShrink: 0 }}>
+                            {item.userInfo?.name?.charAt(0)?.toUpperCase() || "?"}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: "13px", fontWeight: "500" }}>{item.userInfo?.name || "—"}</div>
+                            <div style={{ fontSize: "11px", color: "var(--muted-foreground)" }}>{item.userInfo?.email || ""}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td><span className={`role-badge ${item.userInfo?.role || "user"}`}>{item.userInfo?.role || "user"}</span></td>
+                      <td><strong>{item.totalCalls ?? 0}</strong></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="empty-data">No API usage data found.</p>
+          )}
+        </div>
+      </div>
+    </>
+  );
+};
+
+const UserApiSection = () => {
   const [isGen, setIsGen] = useState(false);
   const [todayUsage, setTodayUsage] = useState(0);
   const [monthUsage, setMonthUsage] = useState(0);
@@ -97,52 +266,11 @@ const APISection = () => {
         </div>
 
         <div className="api-quickstart">
-          <div className="api-quickstart-header">
-            <h3>Quick Start</h3>
-            <button
-              onClick={() => handleCopy(codeRef.current.innerText)}
-              className="api-copy-code"
-            >
-              <span className="icon">
-                <Copy size={15} />
-              </span>
-              Copy
-            </button>
-          </div>
-
-          <pre className="api-code" ref={codeRef}>
-            {`
-import axios from "axios";
-
-
-export const uploadByApi = async (files) => {
-  if (!files || files.length === 0) throw new Error("No files selected");
-  else if (files.length > 5)
-    throw new Error("maximum 5 files upload at a time.");
-  const formData = new FormData();
-  files.forEach((item) => {
-    formData.append("files", item.file);
-  });
-
-  try {
-    const res = await axios.post(
-      "http://localhost:3000/api/v1/key/upload-media",
-      formData,
-      {
-        headers: {
-          apikey: "md_sk_a••••••••••••••••", // pass your apikey
-        },
-      },
-    );
-
-    return res.data; // { message, files, creditsUsed, remainingCredits }
-  } catch (err) {
-    console.error("Upload API error:", err.response?.data || err.message);
-    throw err.response?.data || err;
-  }
-};
-`}
-          </pre>
+          <h3 style={{ marginBottom: "12px" }}>Quick Start</h3>
+          <CodeBlock
+            codeRef={codeRef}
+            onCopy={() => handleCopy(codeRef.current.innerText)}
+          />
         </div>
         {isGen && (
           <GenerateApiKey
@@ -153,6 +281,12 @@ export const uploadByApi = async (files) => {
       </div>
     </>
   );
+};
+
+const APISection = () => {
+  const { currentUser } = useAuth();
+  if (currentUser?.role === "admin") return <AdminApiSection />;
+  return <UserApiSection />;
 };
 
 export default APISection;

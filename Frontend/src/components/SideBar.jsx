@@ -4,12 +4,23 @@ import "../assets/style/SideBar.css";
 import { IMAGES, SideBarMenu } from "../utils/constants";
 import { useLocation, useNavigate } from "react-router";
 import LogoutModel from "../auth/LogoutModel";
+import { useAuth } from "../context/AuthContext";
 
 const SideBar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { currentUser } = useAuth();
   const [isSideBar, setIsSideBar] = useState(false);
   const [isLogout, setIsLogout] = useState(false);
+
+  const isAdmin = currentUser?.role === "admin";
+  const menuItems = isAdmin
+    ? SideBarMenu.map((item) =>
+        item.route === "/upload-media"
+          ? { name: "Users", icon: "Users", route: "/admin/users", activeAt: "/admin/users", startsWith: ["/admin/users"] }
+          : item
+      )
+    : SideBarMenu;
 
   return (
     <>
@@ -58,7 +69,7 @@ const SideBar = () => {
         <div className="sidebar-divider" />
 
         <nav className="sidebar-menu">
-          {SideBarMenu.map((item, index) => {
+          {menuItems.map((item, index) => {
             const Icon = LucideIcons[item.icon];
             const isActive = (item) => {
               if (location.pathname === item.activeAt) return true;

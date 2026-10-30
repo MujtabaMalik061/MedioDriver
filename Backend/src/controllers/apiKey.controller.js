@@ -72,13 +72,15 @@ export const uploadMediaByApiKeys = async (req, res) => {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ message: "No files uploaded" });
     }
+    const isPremium = user.role === "premium";
+
     let totalCreditsRequired = 0;
     req.files.forEach((file) => {
       const sizeInMB = file.size / (1024 * 1024);
       totalCreditsRequired += Math.ceil(sizeInMB) * 2;
     });
 
-    if (user.credits < totalCreditsRequired) {
+    if (!isPremium && user.credits < totalCreditsRequired) {
       return res.status(400).json({
         message: `${totalCreditsRequired} credits required`,
         requiredCredits: totalCreditsRequired,
@@ -124,8 +126,10 @@ export const uploadMediaByApiKeys = async (req, res) => {
       ),
     );
 
-    user.credits -= totalCreditsRequired;
-    await user.save();
+    if (!isPremium) {
+      user.credits -= totalCreditsRequired;
+      await user.save();
+    }
 
     const today = new Date().toISOString().split("T")[0];
     await KeyUsage.findOneAndUpdate(
@@ -140,8 +144,10 @@ export const uploadMediaByApiKeys = async (req, res) => {
     res.status(201).json({
       message: "Files uploaded successfully",
       files: uploadedFiles,
-      creditsUsed: totalCreditsRequired,
-      remainingCredits: user.credits,
+      ...(!isPremium && {
+        creditsUsed: totalCreditsRequired,
+        remainingCredits: user.credits,
+      }),
     });
   } catch (error) {
     console.error("Upload error:", error);

@@ -9,7 +9,7 @@ const userSchema = new Schema(
     profilImg: { type: String, default: "" },
     role: {
       type: String,
-      enum: ["user", "admin"],
+      enum: ["user", "admin", "premium"],
       default: "user",
     },
     password: {

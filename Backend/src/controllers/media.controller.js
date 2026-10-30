@@ -26,12 +26,18 @@ export const uploadMedia = async (req, res) => {
         return res.status(404).json({ message: "User not found" });
       }
 
-      if (user.credits < requiredCredits) {
+      const isPremium = user.role === "premium";
+
+      if (!isPremium && user.credits < requiredCredits) {
         return res.status(400).json({
           message: `${requiredCredits} credits required to upload this file`,
           requiredCredits,
           availableCredits: user.credits,
         });
+      }
+
+      if (isPremium) {
+        requiredCredits = 0;
       }
     }
 
@@ -95,7 +101,9 @@ export const uploadMultipleMedia = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (user.credits < totalCreditsRequired) {
+    const isPremium = user.role === "premium";
+
+    if (!isPremium && user.credits < totalCreditsRequired) {
       return res.status(400).json({
         message: `${totalCreditsRequired} credits required to upload these files`,
         requiredCredits: totalCreditsRequired,
@@ -141,14 +149,18 @@ export const uploadMultipleMedia = async (req, res) => {
       }),
     );
 
-    user.credits -= totalCreditsRequired;
-    await user.save();
+    if (!isPremium) {
+      user.credits -= totalCreditsRequired;
+      await user.save();
+    }
 
     res.status(201).json({
       message: "Files uploaded successfully",
       files: uploadedFiles,
-      creditsUsed: totalCreditsRequired,
-      remainingCredits: user.credits,
+      ...(!isPremium && {
+        creditsUsed: totalCreditsRequired,
+        remainingCredits: user.credits,
+      }),
     });
   } catch (error) {
     console.error("Multiple upload error:", error);
