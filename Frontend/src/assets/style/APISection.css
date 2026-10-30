@@ -221,6 +221,12 @@
   margin: 0;
 }
 
+.qs-line {
+  display: block;
+  min-height: 1.6em;
+  line-height: 1.6;
+}
+
 .qs-kw  { color: #ff7b72; }
 .qs-fn  { color: #d2a8ff; }
 .qs-str { color: #a5d6ff; }

@@ -19,25 +19,25 @@ import { adminGetApiStats } from "../services/admin.services";
 const CODE_LINES = [
   `import axios from "axios";`,
   ``,
+  `const API_URL= "https://medio-driver-backend.vercel.app"`,
+  ``,
   `export const uploadByApi = async (files) => {`,
   `  if (!files || files.length === 0) throw new Error("No files selected");`,
   `  if (files.length > 5) throw new Error("Maximum 5 files at a time");`,
-  ``,
   `  const formData = new FormData();`,
   `  files.forEach((file) => formData.append("files", file));`,
-  ``,
   `  try {`,
   `    const res = await axios.post(`,
-  "    `${import.meta.env.VITE_API_URL}/api/v1/key/upload-media`,",
-  `    formData,`,
-  `    {`,
-  `      headers: {`,
-  `        apikey: "md_sk_••••••••••••••••", // Your API key`,
+  "      `${API_URL}/api/v1/key/upload-media`,",
+  `      formData,`,
+  `      {`,
+  `        headers: {`,
+  `          apikey: "md_sk_••••••••••••••••", // Your API key`,
+  `        },`,
   `      },`,
-  `    }`,
-  `  );`,
-  `  // { message, files, creditsUsed, remainingCredits }`,
-  `  return res.data;`,
+  `    );`,
+  `    // response { message, files, creditsUsed, remainingCredits }`,
+  `    return res.data;`,
   `  } catch (err) {`,
   `    console.error("Upload error:", err.response?.data || err.message);`,
   `    throw err.response?.data || err;`,
@@ -45,49 +45,63 @@ const CODE_LINES = [
   `};`,
 ];
 
-const KEYWORDS = ["import", "export", "const", "async", "await", "return", "throw", "if", "new", "try", "catch"];
-const FN_NAMES = ["uploadByApi", "axios\\.post", "console\\.error"];
+// Single regex with 4 named capture groups — no nested groups, no duplicate splits
+const TOKEN_RE =
+  /("(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`|'(?:[^'\\]|\\.)*')|\b(import|export|const|async|await|return|throw|if|new|try|catch)\b|(uploadByApi|axios\.post|console\.error)|\b(\d+)\b/g;
 
 function highlightLine(line) {
   if (line.trim().startsWith("//")) {
     return <span className="qs-cmt">{line}</span>;
   }
 
-  const parts = [];
-  let remaining = line;
-  let key = 0;
+  const result = [];
+  let lastIndex = 0;
+  TOKEN_RE.lastIndex = 0;
+  let match;
 
-  // Tokenise: strings first, then keywords, then fn names, then numbers
-  const stringRegex = /("(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`|'(?:[^'\\]|\\.)*')/;
-  const kwRegex = new RegExp(`\\b(${KEYWORDS.join("|")})\\b`);
-  const fnRegex = new RegExp(`(${FN_NAMES.join("|")})`);
-  const numRegex = /\b(\d+)\b/;
+  while ((match = TOKEN_RE.exec(line)) !== null) {
+    if (match.index > lastIndex) {
+      result.push(<span key={lastIndex}>{line.slice(lastIndex, match.index)}</span>);
+    }
+    const token = match[0];
+    const k = match.index;
+    if (match[1])      result.push(<span key={k} className="qs-str">{token}</span>);
+    else if (match[2]) result.push(<span key={k} className="qs-kw">{token}</span>);
+    else if (match[3]) result.push(<span key={k} className="qs-fn">{token}</span>);
+    else               result.push(<span key={k} className="qs-num">{token}</span>);
+    lastIndex = match.index + token.length;
+  }
 
-  const combinedRegex = new RegExp(
-    `(${stringRegex.source}|${kwRegex.source}|${fnRegex.source}|${numRegex.source})`
-  );
-
-  const tokens = remaining.split(combinedRegex).filter((t) => t !== undefined && t !== "");
-
-  return tokens.map((token, i) => {
-    if (stringRegex.test(token) && token === remaining.match(stringRegex)?.[0]) {
-      // handled below
-    }
-    if (/"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`|'(?:[^'\\]|\\.)*'/.test(token)) {
-      return <span key={i} className="qs-str">{token}</span>;
-    }
-    if (new RegExp(`^(${KEYWORDS.join("|")})$`).test(token)) {
-      return <span key={i} className="qs-kw">{token}</span>;
-    }
-    if (new RegExp(`^(${FN_NAMES.join("|")})$`).test(token)) {
-      return <span key={i} className="qs-fn">{token}</span>;
-    }
-    if (/^\d+$/.test(token)) {
-      return <span key={i} className="qs-num">{token}</span>;
-    }
-    return <span key={i}>{token}</span>;
-  });
+  if (lastIndex < line.length) {
+    result.push(<span key={lastIndex}>{line.slice(lastIndex)}</span>);
+  }
+  return result;
 }
+
+const InstallBlock = ({ onCopy }) => {
+  const cmd = "npm install axios";
+  return (
+    <div className="qs-block" style={{ marginBottom: "12px" }}>
+      <div className="qs-header">
+        <span className="qs-lang">Terminal</span>
+        <button onClick={() => { navigator.clipboard.writeText(cmd); }} className="qs-copy-btn">
+          <Copy size={14} />
+          Copy
+        </button>
+      </div>
+      <div className="qs-body">
+        <div className="qs-lines"><div>1</div></div>
+        <pre className="qs-code">
+          <div>
+            <span className="qs-kw">npm</span>
+            <span> install </span>
+            <span className="qs-fn">axios</span>
+          </div>
+        </pre>
+      </div>
+    </div>
+  );
+};
 
 const CodeBlock = ({ codeRef, onCopy }) => {
   return (
@@ -102,12 +116,12 @@ const CodeBlock = ({ codeRef, onCopy }) => {
       <div className="qs-body">
         <div className="qs-lines">
           {CODE_LINES.map((_, i) => (
-            <div key={i}>{i + 1}</div>
+            <div key={i} className="qs-line">{i + 1}</div>
           ))}
         </div>
         <pre className="qs-code" ref={codeRef}>
           {CODE_LINES.map((line, i) => (
-            <div key={i}>{highlightLine(line)}</div>
+            <div key={i} className="qs-line">{line === "" ? "\u00A0" : highlightLine(line)}</div>
           ))}
         </pre>
       </div>
@@ -131,9 +145,18 @@ const AdminApiSection = () => {
       <TopBar title="API Section" />
       <div className="api-container">
         <div className="api-stats">
-          <StateTabs title="Platform Calls Today" value={loading ? "…" : (data?.todayCalls ?? 0)} />
-          <StateTabs title="Platform Monthly" value={loading ? "…" : (data?.monthCalls ?? 0)} />
-          <StateTabs title="Active Users" value={loading ? "…" : (data?.userStats?.length ?? 0)} />
+          <StateTabs
+            title="Platform Calls Today"
+            value={loading ? "…" : (data?.todayCalls ?? 0)}
+          />
+          <StateTabs
+            title="Platform Monthly"
+            value={loading ? "…" : (data?.monthCalls ?? 0)}
+          />
+          <StateTabs
+            title="Active Users"
+            value={loading ? "…" : (data?.userStats?.length ?? 0)}
+          />
         </div>
 
         <div className="api-keys-section">
@@ -156,18 +179,59 @@ const AdminApiSection = () => {
                   {data.userStats.map((item, i) => (
                     <tr key={i}>
                       <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "var(--primary-hover)", border: "1.5px solid var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "700", color: "var(--primary)", flexShrink: 0 }}>
-                            {item.userInfo?.name?.charAt(0)?.toUpperCase() || "?"}
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: "28px",
+                              height: "28px",
+                              borderRadius: "50%",
+                              background: "var(--primary-hover)",
+                              border: "1.5px solid var(--primary)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "12px",
+                              fontWeight: "700",
+                              color: "var(--primary)",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {item.userInfo?.name?.charAt(0)?.toUpperCase() ||
+                              "?"}
                           </div>
                           <div>
-                            <div style={{ fontSize: "13px", fontWeight: "500" }}>{item.userInfo?.name || "—"}</div>
-                            <div style={{ fontSize: "11px", color: "var(--muted-foreground)" }}>{item.userInfo?.email || ""}</div>
+                            <div
+                              style={{ fontSize: "13px", fontWeight: "500" }}
+                            >
+                              {item.userInfo?.name || "—"}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: "11px",
+                                color: "var(--muted-foreground)",
+                              }}
+                            >
+                              {item.userInfo?.email || ""}
+                            </div>
                           </div>
                         </div>
                       </td>
-                      <td><span className={`role-badge ${item.userInfo?.role || "user"}`}>{item.userInfo?.role || "user"}</span></td>
-                      <td><strong>{item.totalCalls ?? 0}</strong></td>
+                      <td>
+                        <span
+                          className={`role-badge ${item.userInfo?.role || "user"}`}
+                        >
+                          {item.userInfo?.role || "user"}
+                        </span>
+                      </td>
+                      <td>
+                        <strong>{item.totalCalls ?? 0}</strong>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -267,6 +331,13 @@ const UserApiSection = () => {
 
         <div className="api-quickstart">
           <h3 style={{ marginBottom: "12px" }}>Quick Start</h3>
+          <p style={{ fontSize: "13px", color: "var(--muted-foreground)", marginBottom: "10px" }}>
+            1. Install axios
+          </p>
+          <InstallBlock />
+          <p style={{ fontSize: "13px", color: "var(--muted-foreground)", margin: "14px 0 10px" }}>
+            2. Upload files using your API key
+          </p>
           <CodeBlock
             codeRef={codeRef}
             onCopy={() => handleCopy(codeRef.current.innerText)}
@@ -387,7 +458,7 @@ const GenerateApiKey = ({ onClose, setApiKeys }) => {
     try {
       setLoading(true);
       const res = await genApiKey(keyName);
-      setApiKeys((prev) => [res?.apiKey,...prev]);
+      setApiKeys((prev) => [res?.apiKey, ...prev]);
       toast.success("Api key gen successfuly.");
     } catch (err) {
       console.error("Failed to gen api key:", err);
