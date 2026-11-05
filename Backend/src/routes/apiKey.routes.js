@@ -8,6 +8,7 @@ import {
   getUserApiUsage,
   getApiUsageByDate,
   getApiUsageByMonth,
+  getApiDetails,
 } from "../controllers/apiKey.controller.js";
 import { upload } from "../middlewares/media.middleware.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
@@ -21,5 +22,6 @@ router.delete("/del-key/:keyId", verifyToken, deleteApiKey);
 router.get("/api-usage", verifyToken, getUserApiUsage);
 router.get("/api-uage-by-date", verifyToken, getApiUsageByDate);
 router.get("/api-uage-by-month", verifyToken, getApiUsageByMonth);
+router.get("/api-details/:keyId", verifyToken, getApiDetails);
 
 export default router;

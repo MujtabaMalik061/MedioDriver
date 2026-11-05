@@ -31,6 +31,8 @@ const UploadMedia = () => {
   const [todayUploades, setTodayUploades] = useState([]);
   const fileInputRef = useRef(null);
   const MAX_FILES = 5;
+  const MAX_FILE_SIZE_MB = 500;
+  const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
   useEffect(() => {
     handleGetTodayUploads();
@@ -53,6 +55,12 @@ const UploadMedia = () => {
 
     if (files.length + incomingFiles.length > MAX_FILES) {
       toast.error(`You can only upload up to ${MAX_FILES} files`);
+      return;
+    }
+
+    const oversized = incomingFiles.filter((f) => f.size > MAX_FILE_SIZE_BYTES);
+    if (oversized.length > 0) {
+      toast.error(`Each file must be under ${MAX_FILE_SIZE_MB} MB`);
       return;
     }
 
@@ -129,7 +137,7 @@ const UploadMedia = () => {
             <h2 className="upload-dropzone-title">Drag & drop files here</h2>
 
             <p className="upload-dropzone-subtitle">
-              or click to browse • Images, Audio, Video, PDF
+              or click to browse • Any file type • Max 500 MB per file
             </p>
 
             <button
@@ -149,6 +157,7 @@ const UploadMedia = () => {
               hidden
               ref={fileInputRef}
               onChange={handleFileChange}
+              accept="*/*"
             />
           </div>
 

@@ -8,6 +8,8 @@ const mediaSchema = new mongoose.Schema(
     views: { type: Number, default: 0 },
     gridfsId: { type: mongoose.Schema.Types.ObjectId, required: true },
     uploadBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    uploadSource: { type: String, enum: ["site", "apikey"], default: "site" },
+    uploadedViaKey: { type: mongoose.Schema.Types.ObjectId, ref: "ApiKey", default: null },
   },
   { timestamps: true },
 );

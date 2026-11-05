@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import "../assets/style/APISection.css";
 import "../assets/style/Admin.css";
-import { Key, Eye, Copy, Trash2, EyeOff } from "lucide-react";
+import { Key, Eye, Copy, Trash2, EyeOff, ExternalLink } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Input, TopBar } from "../components/CustomComponents";
 import { toast } from "sonner";
 import {
@@ -132,6 +133,7 @@ const CodeBlock = ({ codeRef, onCopy }) => {
 const AdminApiSection = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     adminGetApiStats()
@@ -177,7 +179,11 @@ const AdminApiSection = () => {
                 </thead>
                 <tbody>
                   {data.userStats.map((item, i) => (
-                    <tr key={i}>
+                    <tr
+                      key={i}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => item._id && navigate(`/admin/users/${item._id}`)}
+                    >
                       <td>
                         <div
                           style={{
@@ -393,6 +399,7 @@ const ApiKeyCard = ({
   setApiKeys,
 }) => {
   const [isShow, setIsShow] = useState(false);
+  const navigate = useNavigate();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(apiKey);
@@ -417,21 +424,24 @@ const ApiKeyCard = ({
     : "N/A";
 
   return (
-    <div className="api-key-card">
+    <div className="api-key-card api-key-card-clickable" onClick={() => navigate(`/api-key/${keyId}`)}>
       <div className="api-key-top">
         <div>
           <h4>{title || "N/A"}</h4>
           <p>
             Created {formateDate(created) || "N/A"}{" "}
-            {lastUsed &&
-              `• Last used
-            ${timeAgo(lastUsed) || "N/A"}`}
+            {lastUsed && `• Last used ${timeAgo(lastUsed) || "N/A"}`}
           </p>
         </div>
-        <span className="api-key-badge">{calls || 0} calls</span>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span className="api-key-badge">{calls || 0} calls</span>
+          <span className="icon" title="View Details">
+            <ExternalLink size={15} style={{ color: "var(--primary)" }} />
+          </span>
+        </div>
       </div>
 
-      <div className="api-key-bottom">
+      <div className="api-key-bottom" onClick={(e) => e.stopPropagation()}>
         <p>{isShow ? apiKey : maskedKey}</p>
         <div className="api-key-actions">
           <span onClick={() => setIsShow(!isShow)} className="icon">

@@ -11,6 +11,7 @@ import {
   getAdminMediaRecords,
   getAdminPayments,
   getAdminApiStats,
+  getApiDetails
 } from "../controllers/admin.controller.js";
 
 const router = Router();
@@ -20,6 +21,7 @@ router.get("/dashboard", getAdminDashboardStats);
 router.get("/media", getAdminMediaRecords);
 router.get("/payments", getAdminPayments);
 router.get("/api-stats", getAdminApiStats);
+router.get("/api-details/:keyId", getApiDetails);
 
 router.get("/users", getAllUsers);
 router.get("/users/:userId", getUserById);

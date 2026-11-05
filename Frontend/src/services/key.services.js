@@ -59,6 +59,15 @@ export const getApiUsageByMonth = async (month) => {
   }
 };
 
+export const getApiKeyDetails = async (keyId) => {
+  try {
+    const res = await API.get(`/api/v1/key/api-details/${keyId}`);
+    return res.data;
+  } catch (err) {
+    throw err.response?.data;
+  }
+};
+
 export const uploadByApi = async (files) => {
   if (!files || files.length === 0) throw new Error("No files selected");
   else if (files.length > 5)

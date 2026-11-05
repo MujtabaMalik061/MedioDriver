@@ -109,6 +109,8 @@ export const uploadMediaByApiKeys = async (req, res) => {
                 size: file.size,
                 gridfsId: uploadStream.id,
                 uploadBy: user._id,
+                uploadSource: "apikey",
+                uploadedViaKey: key._id,
               });
 
               uploadedFiles.push({
@@ -187,7 +189,7 @@ export const deleteApiKey = async (req, res) => {
 export const getUserApiUsage = async (req, res) => {
   try {
     const total = await KeyUsage.aggregate([
-      { $match: { user: mongoose.Types.ObjectId(req.user.id) } },
+      { $match: { user: new mongoose.Types.ObjectId(req.user.id) } },
       { $group: { _id: null, totalCalls: { $sum: "$calls" } } },
     ]);
 
@@ -247,6 +249,40 @@ export const getApiUsageByMonth = async (req, res) => {
     res.status(200).json({ totalCalls: total[0]?.totalCalls || 0 });
   } catch (error) {
     console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getApiDetails = async (req, res) => {
+  try {
+    const { keyId } = req.params;
+
+    const isObjectId = mongoose.Types.ObjectId.isValid(keyId);
+    const key = await ApiKey.findOne(
+      isObjectId ? { $or: [{ _id: keyId }, { key: keyId }] } : { key: keyId }
+    ).lean();
+    if (!key) return res.status(404).json({ message: "API key not found" });
+
+    if (key.createdBy.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const uploadedMedia = await Media.find(
+      { uploadedViaKey: key._id },
+      { _id: 1, filename: 1, contentType: 1, size: 1, createdAt: 1 }
+    ).lean();
+
+    return res.status(200).json({
+      key: {
+        _id: key._id,
+        name: key.name,
+        createdAt: key.createdAt,
+        lastUsed: key.lastUsed || null,
+        totalCalls: key.keyCalles || 0,
+      },
+      uploadedMedia,
+    });
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };

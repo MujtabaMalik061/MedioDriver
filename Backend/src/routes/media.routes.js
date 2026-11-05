@@ -8,12 +8,12 @@ import {
   getTodayUploads,
   getMediaRecords,
 } from "../controllers/media.controller.js";
-import { verifyToken } from "../middlewares/auth.middleware.js";
+import { verifyToken, verifyTokenOrApiKey } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-router.post("/upload-media", verifyToken, upload.single("file"), uploadMedia);
-router.post( "/upload-multiple-media", verifyToken,  upload.array("files", 5),  uploadMultipleMedia,);
+router.post("/upload-media", verifyTokenOrApiKey, upload.single("file"), uploadMedia);
+router.post("/upload-multiple-media", verifyTokenOrApiKey, upload.array("files", 5), uploadMultipleMedia);
 router.delete("/delete-media/:id", verifyToken, deleteMedia);
 router.get("/today-uploads", verifyToken, getTodayUploads);
 router.get("/get-media/:id", getMediaById);

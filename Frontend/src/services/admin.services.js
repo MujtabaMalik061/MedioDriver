@@ -26,3 +26,6 @@ export const adminGetPayments = (params) =>
 
 export const adminGetApiStats = () =>
   api.get("/api/admin/api-stats").then((r) => r.data);
+
+export const adminGetApiKeyDetails = (keyId) =>
+  api.get(`/api/admin/api-details/${keyId}`).then((r) => r.data);

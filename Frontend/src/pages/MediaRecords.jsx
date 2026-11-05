@@ -12,7 +12,12 @@ import {
   Video,
   FileText,
 } from "lucide-react";
-import { LoadMore, SearchInput, StorageSearch, TopBar } from "../components/CustomComponents";
+import {
+  LoadMore,
+  SearchInput,
+  StorageSearch,
+  TopBar,
+} from "../components/CustomComponents";
 import { deleteMedia, getMediaRecords } from "../services/upload.services";
 import Loader from "../components/Loader";
 import { formateDate, formatFileSize, handleDownload } from "../utils/Helper";
@@ -31,12 +36,31 @@ const getIcon = (type = "") => {
 
 const UserBadge = ({ user }) => (
   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-    <div style={{ width: "26px", height: "26px", borderRadius: "50%", background: "var(--primary-hover)", border: "1.5px solid var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "700", color: "var(--primary)", flexShrink: 0 }}>
+    <div
+      style={{
+        width: "26px",
+        height: "26px",
+        borderRadius: "50%",
+        background: "var(--primary-hover)",
+        border: "1.5px solid var(--primary)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "11px",
+        fontWeight: "700",
+        color: "var(--primary)",
+        flexShrink: 0,
+      }}
+    >
       {user?.name?.charAt(0)?.toUpperCase() || "?"}
     </div>
     <div>
-      <div style={{ fontSize: "12px", fontWeight: "500" }}>{user?.name || "—"}</div>
-      <div style={{ fontSize: "11px", color: "var(--muted-foreground)" }}>{user?.email || ""}</div>
+      <div style={{ fontSize: "12px", fontWeight: "500" }}>
+        {user?.name || "—"}
+      </div>
+      <div style={{ fontSize: "11px", color: "var(--muted-foreground)" }}>
+        {user?.email || ""}
+      </div>
     </div>
   </div>
 );
@@ -49,7 +73,7 @@ const AdminMediaRecords = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const LIMIT = 10;
+  const LIMIT = 20;
 
   const searchDebounce = useDebounce(search, 500);
 
@@ -59,12 +83,18 @@ const AdminMediaRecords = () => {
     { label: "Audio", value: "audio" },
     { label: "Video", value: "video" },
     { label: "Pdf", value: "pdf" },
+    { label: "Other", value: "other" },
   ];
 
   const fetchRecords = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await adminGetMediaRecords({ page, limit: LIMIT, search: searchDebounce || undefined, contentType: filter !== "all" ? filter : undefined });
+      const res = await adminGetMediaRecords({
+        page,
+        limit: LIMIT,
+        search: searchDebounce || undefined,
+        contentType: filter !== "all" ? filter : undefined,
+      });
       setRecords(res.files || []);
       setTotal(res.total || 0);
       setTotalPages(res.totalPages || 1);
@@ -75,8 +105,12 @@ const AdminMediaRecords = () => {
     }
   }, [page, searchDebounce, filter]);
 
-  useEffect(() => { setPage(1); }, [searchDebounce, filter]);
-  useEffect(() => { fetchRecords(); }, [fetchRecords]);
+  useEffect(() => {
+    setPage(1);
+  }, [searchDebounce, filter]);
+  useEffect(() => {
+    fetchRecords();
+  }, [fetchRecords]);
 
   return (
     <>
@@ -86,7 +120,13 @@ const AdminMediaRecords = () => {
           <SearchInput value={search} setValue={setSearch} width="280px" />
           <div className="media-record-filters">
             {filters.map((f, i) => (
-              <button key={i} className={`media-record-filter ${filter === f.value ? "active" : ""}`} onClick={() => setFilter(f.value)}>{f.label}</button>
+              <button
+                key={i}
+                className={`media-record-filter ${filter === f.value ? "active" : ""}`}
+                onClick={() => setFilter(f.value)}
+              >
+                {f.label}
+              </button>
             ))}
           </div>
         </div>
@@ -106,36 +146,104 @@ const AdminMediaRecords = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} style={{ textAlign: "center", padding: "40px", color: "var(--muted-foreground)" }}>Loading...</td></tr>
-              ) : records.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: "center", padding: "40px", color: "var(--muted-foreground)" }}>No media found.</td></tr>
-              ) : records.map((item) => (
-                <tr key={item._id}>
-                  <td><UserBadge user={item.uploadBy} /></td>
-                  <td style={{ maxWidth: "180px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <span className="media-record-icon">{getIcon(item.contentType)}</span>
-                      <span className="elepsis" style={{ fontSize: "13px" }}>{item.filename || "N/A"}</span>
-                    </div>
-                  </td>
-                  <td style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>{item.contentType?.split("/")[0] || "N/A"}</td>
-                  <td>{formatFileSize(item.size) || "N/A"}</td>
-                  <td>{item.views || 0}</td>
-                  <td style={{ fontSize: "12px", color: "var(--muted-foreground)" }}>{formateDate(item.createdAt)}</td>
-                  <td>
-                    <Eye size={15} style={{ cursor: "pointer", color: "var(--primary)" }} onClick={() => window.open(item.fileUrl, "_blank")} />
+                <tr>
+                  <td
+                    colSpan={7}
+                    style={{
+                      textAlign: "center",
+                      padding: "40px",
+                      color: "var(--muted-foreground)",
+                    }}
+                  >
+                    Loading...
                   </td>
                 </tr>
-              ))}
+              ) : records.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    style={{
+                      textAlign: "center",
+                      padding: "40px",
+                      color: "var(--muted-foreground)",
+                    }}
+                  >
+                    No media found.
+                  </td>
+                </tr>
+              ) : (
+                records.map((item) => (
+                  <tr key={item._id}>
+                    <td>
+                      <UserBadge user={item.uploadBy} />
+                    </td>
+                    <td style={{ maxWidth: "180px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        <span className="media-record-icon">
+                          {getIcon(item.contentType)}
+                        </span>
+                        <span className="elepsis" style={{ fontSize: "13px" }}>
+                          {item.filename || "N/A"}
+                        </span>
+                      </div>
+                    </td>
+                    <td
+                      style={{
+                        fontSize: "12px",
+                        color: "var(--muted-foreground)",
+                      }}
+                    >
+                      {item.contentType?.split("/")[0] || "N/A"}
+                    </td>
+                    <td>{formatFileSize(item.size) || "N/A"}</td>
+                    <td>{item.views || 0}</td>
+                    <td
+                      style={{
+                        fontSize: "12px",
+                        color: "var(--muted-foreground)",
+                      }}
+                    >
+                      {formateDate(item.createdAt)}
+                    </td>
+                    <td>
+                      <Eye
+                        size={15}
+                        style={{ cursor: "pointer", color: "var(--primary)" }}
+                        onClick={() => window.open(item.fileUrl, "_blank")}
+                      />
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         {totalPages > 1 && (
           <div className="admin-pagination">
-            <button className="admin-btn admin-btn-primary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Prev</button>
-            <span>Page {page} of {totalPages} ({total} files)</span>
-            <button className="admin-btn admin-btn-primary" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</button>
+            <button
+              className="admin-btn admin-btn-primary"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              Prev
+            </button>
+            <span>
+              Page {page} of {totalPages} ({total} files)
+            </span>
+            <button
+              className="admin-btn admin-btn-primary"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </button>
           </div>
         )}
       </div>
@@ -222,7 +330,11 @@ const UserMediaRecords = () => {
       <TopBar title="Media Records" />
       <div className="page-container">
         <div className="media-record-topbar">
-          <StorageSearch setValue={setSearch} width="310px"  storage="mediaRecordSearchHistory"/>
+          <StorageSearch
+            setValue={setSearch}
+            width="310px"
+            storage="mediaRecordSearchHistory"
+          />
           <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
             <div className="media-record-filters">
               {filters.map((f, i) => (

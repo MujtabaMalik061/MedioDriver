@@ -62,6 +62,8 @@ export const uploadMedia = async (req, res) => {
         size: req.file.size,
         gridfsId: uploadStream.id,
         uploadBy: req.user?.id,
+        uploadSource: req.apiKeyId ? "apikey" : "site",
+        uploadedViaKey: req.apiKeyId || null,
       });
 
       res.status(201).json({
@@ -132,6 +134,8 @@ export const uploadMultipleMedia = async (req, res) => {
               size: file.size,
               gridfsId: uploadStream.id,
               uploadBy: req.user.id,
+              uploadSource: req.apiKeyId ? "apikey" : "site",
+              uploadedViaKey: req.apiKeyId || null,
             });
 
             uploadedFiles.push({
@@ -200,19 +204,44 @@ export const getMediaById = async (req, res) => {
       return res.status(404).json({ message: "File not found" });
     }
 
-    await Media.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { views: 1 } },
-      { new: true },
-    );
+    await Media.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } });
 
     const bucket = getBucket();
+    const fileSize = media.size;
 
-    res.set("Content-Type", media.contentType);
-    res.set("Content-Disposition", "inline");
-    const downloadStream = bucket.openDownloadStream(media.gridfsId);
+    // Normalize MOV to a browser-playable content type
+    const contentType =
+      media.contentType === "video/quicktime" ? "video/mp4" : media.contentType;
 
-    downloadStream.pipe(res);
+    const rangeHeader = req.headers.range;
+
+    if (rangeHeader) {
+      const [startStr, endStr] = rangeHeader.replace(/bytes=/, "").split("-");
+      const start = parseInt(startStr, 10);
+      const end = endStr ? parseInt(endStr, 10) : fileSize - 1;
+      const chunkSize = end - start + 1;
+
+      res.writeHead(206, {
+        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+        "Accept-Ranges": "bytes",
+        "Content-Length": chunkSize,
+        "Content-Type": contentType,
+        "Content-Disposition": `inline; filename="${media.filename}"`,
+      });
+
+      const downloadStream = bucket.openDownloadStream(media.gridfsId, { start, end: end + 1 });
+      downloadStream.pipe(res);
+    } else {
+      res.writeHead(200, {
+        "Content-Length": fileSize,
+        "Content-Type": contentType,
+        "Accept-Ranges": "bytes",
+        "Content-Disposition": `inline; filename="${media.filename}"`,
+      });
+
+      const downloadStream = bucket.openDownloadStream(media.gridfsId);
+      downloadStream.pipe(res);
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

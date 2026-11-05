@@ -15,6 +15,8 @@ import PaymentSuccess from "./components/PaymentSuccess.jsx";
 import Payments from "./pages/Payments.jsx";
 import AdminUsers from "./pages/admin/AdminUsers.jsx";
 import AdminUserDetail from "./pages/admin/AdminUserDetail.jsx";
+import ApiKeyDetail from "./pages/ApiKeyDetail.jsx";
+import AdminApiKeyDetail from "./pages/admin/AdminApiKeyDetail.jsx";
 
 const App = () => {
   return (
@@ -95,6 +97,14 @@ const App = () => {
             }
           />
           <Route
+            path="/api-key/:keyId"
+            element={
+              <ProtectedRoute role={["user", "premium"]}>
+                <ApiKeyDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/users"
             element={
               <AdminRoute>
@@ -107,6 +117,14 @@ const App = () => {
             element={
               <AdminRoute>
                 <AdminUserDetail />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/api-key/:keyId"
+            element={
+              <AdminRoute>
+                <AdminApiKeyDetail />
               </AdminRoute>
             }
           />

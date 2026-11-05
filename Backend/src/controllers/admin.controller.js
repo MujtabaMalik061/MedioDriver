@@ -1,6 +1,8 @@
+import mongoose from "mongoose";
 import User from "../models/user.model.js";
 import Payment from "../models/payment.model.js";
 import ApiUsage from "../models/apiUsage.model.js";
+import ApiKey from "../models/apiKey.model.js";
 import Media from "../models/media.model.js";
 import { Backend_Url } from "../config/env.js";
 
@@ -79,7 +81,9 @@ export const suspendUser = async (req, res) => {
     await user.save();
 
     const updated = await User.findById(userId).select("-password").lean();
-    return res.status(200).json({ message: "User status updated", user: updated });
+    return res
+      .status(200)
+      .json({ message: "User status updated", user: updated });
   } catch (err) {
     console.error("suspendUser error:", err);
     return res.status(500).json({ message: "Internal server error" });
@@ -108,7 +112,9 @@ export const getAdminDashboardStats = async (req, res) => {
       User.countDocuments({}),
       Media.countDocuments({}),
       Media.aggregate([{ $group: { _id: null, total: { $sum: "$size" } } }]),
-      ApiUsage.aggregate([{ $group: { _id: null, total: { $sum: "$calls" } } }]),
+      ApiUsage.aggregate([
+        { $group: { _id: null, total: { $sum: "$calls" } } },
+      ]),
     ]);
     const formatStorage = (bytes) => {
       if (bytes >= 1e9) return (bytes / 1e9).toFixed(2) + " GB";
@@ -138,13 +144,30 @@ export const getAdminMediaRecords = async (req, res) => {
     const skip = (page - 1) * limit;
     const filter = {};
     if (search) filter.filename = { $regex: search, $options: "i" };
-    if (contentType && contentType !== "all") filter.contentType = { $regex: contentType, $options: "i" };
+    if (contentType && contentType !== "all")
+      filter.contentType = { $regex: contentType, $options: "i" };
     const [files, total] = await Promise.all([
-      Media.find(filter).populate("uploadBy", "name email profilImg role").sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Media.find(filter)
+        .populate("uploadBy", "name email profilImg role")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
       Media.countDocuments(filter),
     ]);
-    const filesWithUrl = files.map((f) => ({ ...f, fileUrl: `${Backend_Url}/api/media/get-media/${f._id}` }));
-    return res.status(200).json({ files: filesWithUrl, total, page, limit, totalPages: Math.ceil(total / limit) });
+    const filesWithUrl = files.map((f) => ({
+      ...f,
+      fileUrl: `${Backend_Url}/api/media/get-media/${f._id}`,
+    }));
+    return res
+      .status(200)
+      .json({
+        files: filesWithUrl,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      });
   } catch (err) {
     console.error("getAdminMediaRecords error:", err);
     return res.status(500).json({ message: "Internal server error" });
@@ -158,10 +181,23 @@ export const getAdminPayments = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
     const [payments, total] = await Promise.all([
-      Payment.find({}).populate("userId", "name email profilImg role").sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Payment.find({})
+        .populate("userId", "name email profilImg role")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
       Payment.countDocuments({}),
     ]);
-    return res.status(200).json({ payments, total, page, limit, totalPages: Math.ceil(total / limit) });
+    return res
+      .status(200)
+      .json({
+        payments,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      });
   } catch (err) {
     console.error("getAdminPayments error:", err);
     return res.status(500).json({ message: "Internal server error" });
@@ -172,26 +208,96 @@ export const getAdminPayments = async (req, res) => {
 export const getAdminApiStats = async (req, res) => {
   try {
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const endOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+    );
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     const [todayAgg, monthAgg, userStats] = await Promise.all([
-      ApiUsage.aggregate([{ $match: { date: { $gte: startOfToday, $lt: endOfToday } } }, { $group: { _id: null, total: { $sum: "$calls" } } }]),
-      ApiUsage.aggregate([{ $match: { date: { $gte: startOfMonth, $lt: endOfMonth } } }, { $group: { _id: null, total: { $sum: "$calls" } } }]),
+      ApiUsage.aggregate([
+        { $match: { date: { $gte: startOfToday, $lt: endOfToday } } },
+        { $group: { _id: null, total: { $sum: "$calls" } } },
+      ]),
+      ApiUsage.aggregate([
+        { $match: { date: { $gte: startOfMonth, $lt: endOfMonth } } },
+        { $group: { _id: null, total: { $sum: "$calls" } } },
+      ]),
       ApiUsage.aggregate([
         { $group: { _id: "$user", totalCalls: { $sum: "$calls" } } },
         { $sort: { totalCalls: -1 } },
         { $limit: 20 },
-        { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "userInfo" } },
+        {
+          $lookup: {
+            from: "users",
+            localField: "_id",
+            foreignField: "_id",
+            as: "userInfo",
+          },
+        },
         { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
-        { $project: { totalCalls: 1, "userInfo.name": 1, "userInfo.email": 1, "userInfo.role": 1, "userInfo.profilImg": 1 } },
+        {
+          $project: {
+            totalCalls: 1,
+            "userInfo.name": 1,
+            "userInfo.email": 1,
+            "userInfo.role": 1,
+            "userInfo.profilImg": 1,
+          },
+        },
       ]),
     ]);
-    return res.status(200).json({ todayCalls: todayAgg[0]?.total || 0, monthCalls: monthAgg[0]?.total || 0, userStats });
+    return res
+      .status(200)
+      .json({
+        todayCalls: todayAgg[0]?.total || 0,
+        monthCalls: monthAgg[0]?.total || 0,
+        userStats,
+      });
   } catch (err) {
     console.error("getAdminApiStats error:", err);
     return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const getApiDetails = async (req, res) => {
+  try {
+    const { keyId } = req.params;
+
+    const isObjectId = mongoose.Types.ObjectId.isValid(keyId);
+    const key = await ApiKey.findOne(
+      isObjectId ? { $or: [{ _id: keyId }, { key: keyId }] } : { key: keyId }
+    ).lean();
+    if (!key) return res.status(404).json({ message: "API key not found" });
+
+    const [owner, uploadedMedia] = await Promise.all([
+      User.findById(key.createdBy).select("-password").lean(),
+      Media.find(
+        { uploadedViaKey: key._id },
+        { _id: 1, filename: 1, contentType: 1, size: 1, createdAt: 1 }
+      ).lean(),
+    ]);
+
+    return res.status(200).json({
+      key: {
+        _id: key._id,
+        name: key.name,
+        createdAt: key.createdAt,
+        lastUsed: key.lastUsed || null,
+        totalCalls: key.keyCalles || 0,
+      },
+      owner: owner || null,
+      uploadedMedia,
+    });
+  } catch (error) {
+    console.error("getApiDetails error:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -203,14 +309,14 @@ export const updateUserRole = async (req, res) => {
 
     const validRoles = ["user", "premium"];
     if (!validRoles.includes(role)) {
-      return res.status(400).json({ message: "Invalid role. Must be one of: user, premium" });
+      return res
+        .status(400)
+        .json({ message: "Invalid role. Must be one of: user, premium" });
     }
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { role },
-      { new: true }
-    ).select("-password").lean();
+    const user = await User.findByIdAndUpdate(userId, { role }, { new: true })
+      .select("-password")
+      .lean();
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
