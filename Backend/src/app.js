@@ -19,8 +19,8 @@ connectToDB();
 app.use(cors());
 app.use(morgan("dev"));
 
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ limit: "10mb", extended: true }));
+app.use(express.json({ limit: "500mb" }));
+app.use(express.urlencoded({ limit: "500mb", extended: true }));
 app.use(cookieParser());
 
 app.use("/api/auth", authRoute);
@@ -29,6 +29,14 @@ app.use("/api/v1/key", keyRoute);
 app.use("/api/payment", paymentRoute);
 app.use("/api/dashboard", dashboardRoute);
 app.use("/api/admin", adminRoute);
+
+app.get("/health", (req, res) => {
+  console.log("Test route hit!");
+  res.status(200).json({
+    success: true,
+    message: "API is working!",
+  });
+});
 
 app.get("/", (req, res) => {
   res.send("Welcome to the Server API");
