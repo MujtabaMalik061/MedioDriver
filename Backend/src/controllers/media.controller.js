@@ -310,8 +310,10 @@ export const updateMedia = async (req, res) => {
         }
         res.status(200).json({
           message: "File updated successfully",
-          fileId: media._id,
-          fileUrl: `${Backend_Url}/api/media/get-media/${media._id}`,
+          file: {
+            ...media.toObject(),
+            fileUrl: `${Backend_Url}/api/media/get-media/${media._id}`,
+          },
           creditsUsed: requiredCredits,
           remainingCredits: user.credits,
         });

@@ -338,6 +338,27 @@ const UserMediaRecords = () => {
     fileInputRef.current.click();
   };
 
+  // const handleUpdateFile = async (e) => {
+  //   const file = e.target.files?.[0];
+  //   const id = updateIdRef.current;
+  //   e.target.value = "";
+  //   if (!file || !id) return;
+
+  //   try {
+  //     setUpdatingId(id);
+  //     const res = await UpdateFile({ id, file });
+  //     toast.success(res?.message || "File updated successfully");
+  //     setPage(1);
+  //     getRecords(1);
+  //   } catch (err) {
+  //     toast.error(err?.response?.data?.message || "Update failed");
+  //     console.error("err-->", err);
+  //   } finally {
+  //     setUpdatingId(null);
+  //     updateIdRef.current = null;
+  //   }
+  // };
+
   const handleUpdateFile = async (e) => {
     const file = e.target.files?.[0];
     const id = updateIdRef.current;
@@ -346,10 +367,13 @@ const UserMediaRecords = () => {
 
     try {
       setUpdatingId(id);
+
       const res = await UpdateFile({ id, file });
+
       toast.success(res?.message || "File updated successfully");
-      setPage(1);
-      getRecords(1);
+      setRecords((prev) =>
+        prev.map((item) => (item._id === id ? { ...item, ...res.file } : item)),
+      );
     } catch (err) {
       toast.error(err?.response?.data?.message || "Update failed");
       console.error("err-->", err);
@@ -358,7 +382,6 @@ const UserMediaRecords = () => {
       updateIdRef.current = null;
     }
   };
-
   return (
     <>
       <TopBar title="Media Records" />
