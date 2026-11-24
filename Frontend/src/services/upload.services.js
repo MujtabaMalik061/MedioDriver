@@ -1,6 +1,6 @@
 import API from "../utils/api";
 
-export const UploadFile = async (file) => {
+export const UploadFile = async (file, onUploadProgress) => {
   try {
     const formData = new FormData();
     formData.append("file", file);
@@ -8,6 +8,7 @@ export const UploadFile = async (file) => {
       headers: {
         "Content-Type": "multipart/form-data",
       },
+      onUploadProgress,
     });
     return res.data;
   } catch (err) {
@@ -31,13 +32,15 @@ export const UploadFileWithCredits = async (file) => {
   }
 };
 
-export const UploadMultipleFiles = async (files) => {
+export const UploadMultipleFiles = async (files, onUploadProgress) => {
   try {
     const formData = new FormData();
     for (let i = 0; i < files.length; i++) {
       formData.append("files", files[i].file);
     }
-    const res = await API.post("/api/media/upload-multiple-media", formData);
+    const res = await API.post("/api/media/upload-multiple-media", formData, {
+      onUploadProgress,
+    });
     return res.data;
   } catch (err) {
     throw err.response?.data;
@@ -53,7 +56,7 @@ export const getTodayUploads = async () => {
   }
 };
 
-export const UpdateFile = async ({ id, file }) => {
+export const UpdateFile = async ({ id, file, onUploadProgress }) => {
   try {
     const formData = new FormData();
     formData.append("file", file);
@@ -61,6 +64,7 @@ export const UpdateFile = async ({ id, file }) => {
       headers: {
         "Content-Type": "multipart/form-data",
       },
+      onUploadProgress,
     });
     return res.data;
   } catch (err) {

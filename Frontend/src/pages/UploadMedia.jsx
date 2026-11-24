@@ -16,7 +16,7 @@ import {
   UploadMultipleFiles,
 } from "../services/upload.services";
 import { toast } from "sonner";
-import { ImageViewModel, TopBar } from "../components/CustomComponents";
+import { ImageViewModel, ProgressBar, TopBar } from "../components/CustomComponents";
 import Loader from "../components/Loader";
 import { formatFileSize, handleCopy, handleDownload } from "../utils/Helper";
 import { useAuth } from "../context/AuthContext";
@@ -26,6 +26,12 @@ const UploadMedia = () => {
   const [credits, setCredits] = useState(currentUser?.credits || 0);
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState({
+    active: false,
+    label: "",
+    percent: 0,
+    indeterminate: false,
+  });
   const [imageModel, setImageModel] = useState(null);
   const [loading, setLoading] = useState(null);
   const [todayUploades, setTodayUploades] = useState([]);
@@ -96,7 +102,34 @@ const UploadMedia = () => {
     if (!files.length) return;
     try {
       setUploading(true);
-      const res = await UploadMultipleFiles(files);
+      setProgress({
+        active: true,
+        label: "Uploading files...",
+        percent: 0,
+        indeterminate: false,
+      });
+
+      const res = await UploadMultipleFiles(files, (e) => {
+        if (!e.total) return;
+        // REAL tracking: this fires from the browser's byte stream.
+        const pct = Math.round((e.loaded * 100) / e.total);
+        if (pct >= 100) {
+          // all bytes sent — server is still writing to GridFS/Mongo
+          setProgress((p) => ({
+            ...p,
+            percent: 100,
+            label: `Processing... ${formatFileSize(e.loaded)}`,
+          }));
+        } else {
+          setProgress((p) => ({
+            ...p,
+            percent: pct,
+            label: `Uploading files... ${formatFileSize(e.loaded)} / ${formatFileSize(e.total)}`,
+          }));
+        }
+      });
+
+      setProgress((p) => ({ ...p, label: "Uploading files... done" }));
       toast.success("All files uploaded!");
       setFiles([]);
       if (res?.remainingCredits !== undefined) {
@@ -110,6 +143,10 @@ const UploadMedia = () => {
       toast.error(err?.message || "Upload failed!");
     } finally {
       setUploading(false);
+      setTimeout(
+        () => setProgress((p) => ({ ...p, active: false, percent: 0 })),
+        600,
+      );
     }
   };
 
@@ -124,6 +161,7 @@ const UploadMedia = () => {
   return (
     <>
       <TopBar title="Upload Media" updateCredits={credits} />
+      <ProgressBar {...progress} />
       <div className="page-container">
         <div className="upload-container">
           <div

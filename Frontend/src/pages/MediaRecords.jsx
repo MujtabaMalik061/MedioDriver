@@ -12,9 +12,11 @@ import {
   Video,
   FileText,
   RefreshCw,
+  Check,
 } from "lucide-react";
 import {
   LoadMore,
+  ProgressBar,
   SearchInput,
   StorageSearch,
   TopBar,
@@ -268,6 +270,16 @@ const UserMediaRecords = () => {
   const [updatingId, setUpdatingId] = useState(null);
   const fileInputRef = useRef(null);
   const updateIdRef = useRef(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingSelected, setDeletingSelected] = useState(false);
+  const [progress, setProgress] = useState({
+    active: false,
+    label: "",
+    percent: 0,
+    indeterminate: false,
+  });
 
   const searchDebounce = useDebounce(search, 500);
 
@@ -324,40 +336,113 @@ const UserMediaRecords = () => {
 
   const handleDelete = async (id) => {
     try {
+      setProgress({
+        active: true,
+        label: "Deleting file...",
+        percent: 0,
+        indeterminate: true,
+      });
+
       await deleteMedia(id);
-      setRecords(records.filter((r) => r._id !== id));
+
+      setRecords((prev) => prev.filter((r) => r._id !== id));
+      setProgress({
+        active: true,
+        label: "Deleted",
+        percent: 100,
+        indeterminate: false,
+      });
       toast.success("Media deleted successfully!");
     } catch (err) {
       console.log("Failed to delete media:", err);
       toast.error(err?.message || "Failed to delete media!");
+    } finally {
+      setTimeout(
+        () => setProgress((p) => ({ ...p, active: false, percent: 0 })),
+        600,
+      );
     }
+  };
+
+  const enterSelectionMode = () => {
+    setSelectionMode(true);
+    setSelectedIds([]);
+  };
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds([]);
+    setShowDeleteConfirm(false);
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+    );
+  };
+
+  // NOTE: this only selects files currently loaded on the page
+  const selectAllLoaded = () => {
+    setSelectedIds(records.map((r) => r._id));
+  };
+
+  const handleDeleteSelected = async () => {
+    if (!selectedIds.length) return;
+    setShowDeleteConfirm(false);
+    setDeletingSelected(true);
+
+    let deleted = 0;
+    let failed = 0;
+
+    setProgress({
+      active: true,
+      label: `Deleting 0 / ${selectedIds.length}...`,
+      percent: 0,
+      indeterminate: true,
+    });
+
+    for (const id of selectedIds) {
+      try {
+        await deleteMedia(id);
+        deleted++;
+        setRecords((prev) => prev.filter((r) => r._id !== id));
+      } catch (err) {
+        failed++;
+        console.log("Failed to delete media:", err);
+      }
+      setProgress((p) => ({
+        ...p,
+        label: `Deleting ${deleted + failed} / ${selectedIds.length}...`,
+      }));
+    }
+
+    setDeletingSelected(false);
+    setProgress({
+      active: true,
+      label: `Deleted ${deleted} file${deleted === 1 ? "" : "s"}`,
+      percent: 100,
+      indeterminate: false,
+    });
+    setTimeout(
+      () => setProgress((p) => ({ ...p, active: false, percent: 0 })),
+      600,
+    );
+
+    if (deleted > 0) {
+      toast.success(
+        `${deleted} media file${deleted === 1 ? "" : "s"} deleted successfully!`,
+      );
+    }
+    if (failed > 0) {
+      toast.error(`${failed} file${failed === 1 ? "" : "s"} failed to delete`);
+    }
+    exitSelectionMode();
   };
 
   const handleUpdateMedia = (id) => {
     updateIdRef.current = id;
     fileInputRef.current.click();
   };
-
-  // const handleUpdateFile = async (e) => {
-  //   const file = e.target.files?.[0];
-  //   const id = updateIdRef.current;
-  //   e.target.value = "";
-  //   if (!file || !id) return;
-
-  //   try {
-  //     setUpdatingId(id);
-  //     const res = await UpdateFile({ id, file });
-  //     toast.success(res?.message || "File updated successfully");
-  //     setPage(1);
-  //     getRecords(1);
-  //   } catch (err) {
-  //     toast.error(err?.response?.data?.message || "Update failed");
-  //     console.error("err-->", err);
-  //   } finally {
-  //     setUpdatingId(null);
-  //     updateIdRef.current = null;
-  //   }
-  // };
 
   const handleUpdateFile = async (e) => {
     const file = e.target.files?.[0];
@@ -367,9 +452,36 @@ const UserMediaRecords = () => {
 
     try {
       setUpdatingId(id);
+      setProgress({
+        active: true,
+        label: "Updating file...",
+        percent: 0,
+        indeterminate: false,
+      });
 
-      const res = await UpdateFile({ id, file });
+      const res = await UpdateFile({
+        id,
+        file,
+        onUploadProgress: (e) => {
+          if (!e.total) return;
+          const pct = Math.round((e.loaded * 100) / e.total);
+          if (pct >= 100) {
+            setProgress((p) => ({
+              ...p,
+              percent: 100,
+              label: `Processing... ${formatFileSize(e.loaded)}`,
+            }));
+          } else {
+            setProgress((p) => ({
+              ...p,
+              percent: pct,
+              label: `Updating file... ${formatFileSize(e.loaded)} / ${formatFileSize(e.total)}`,
+            }));
+          }
+        },
+      });
 
+      setProgress((p) => ({ ...p, label: "Updating file... done" }));
       toast.success(res?.message || "File updated successfully");
       setRecords((prev) =>
         prev.map((item) => (item._id === id ? { ...item, ...res.file } : item)),
@@ -380,11 +492,16 @@ const UserMediaRecords = () => {
     } finally {
       setUpdatingId(null);
       updateIdRef.current = null;
+      setTimeout(
+        () => setProgress((p) => ({ ...p, active: false, percent: 0 })),
+        600,
+      );
     }
   };
   return (
     <>
       <TopBar title="Media Records" />
+      <ProgressBar {...progress} />
       <div className="page-container">
         <div className="media-record-topbar">
           <StorageSearch
@@ -505,7 +622,19 @@ const UserMediaRecords = () => {
           ) : records?.length > 0 ? (
             <div className="media-record-grid">
               {records.map((item, i) => (
-                <div key={i} className="media-record-card">
+                <div
+                  key={i}
+                  className={`media-record-card ${selectionMode && selectedIds.includes(item?._id) ? "media-record-card-selected" : ""}`}
+                >
+                  {selectionMode && (
+                    <div
+                      className="media-record-checkbox"
+                      onClick={() => toggleSelect(item?._id)}
+                      title="Select file"
+                    >
+                      {selectedIds.includes(item?._id) && <Check size={14} />}
+                    </div>
+                  )}
                   <div className="media-record-card-icon">
                     {getIcon(item?.contentType)}
                   </div>
@@ -521,7 +650,11 @@ const UserMediaRecords = () => {
 
                   <div className="media-record-card-actions">
                     <button
-                      onClick={() => window.open(item?.fileUrl, "_blank")}
+                      onClick={() =>
+                        selectionMode
+                          ? toggleSelect(item?._id)
+                          : window.open(item?.fileUrl, "_blank")
+                      }
                     >
                       <Eye size={16} /> View
                     </button>
@@ -532,13 +665,19 @@ const UserMediaRecords = () => {
                       style={{ display: "none" }}
                     />
                     <button
+                      disabled={selectionMode}
                       style={{
                         cursor:
-                          updatingId === item?._id ? "not-allowed" : "pointer",
-                        opacity: updatingId === item?._id ? 0.5 : 1,
+                          selectionMode || updatingId === item?._id
+                            ? "not-allowed"
+                            : "pointer",
+                        opacity:
+                          selectionMode || updatingId === item?._id ? 0.5 : 1,
                       }}
                       onClick={() =>
-                        updatingId !== item?._id && handleUpdateMedia(item?._id)
+                        !selectionMode &&
+                        updatingId !== item?._id &&
+                        handleUpdateMedia(item?._id)
                       }
                     >
                       <RefreshCw
@@ -551,7 +690,13 @@ const UserMediaRecords = () => {
                     <button onClick={() => handleDownload(item?.fileUrl)}>
                       <Download size={16} /> Download
                     </button>
-                    <button onClick={() => handleDelete(item?._id)}>
+                    <button
+                      onClick={() =>
+                        selectionMode
+                          ? toggleSelect(item?._id)
+                          : enterSelectionMode()
+                      }
+                    >
                       <Trash2 size={16} /> Delete
                     </button>
                   </div>
@@ -567,6 +712,80 @@ const UserMediaRecords = () => {
           show={loadingMore || page < lastPage}
           onLoad={handleLoadMore}
         />
+
+        {/* Fixed bottom selection bar */}
+        {selectionMode && (
+          <div className="media-select-bar">
+            <span className="media-select-count">
+              {selectedIds.length} selected
+            </span>
+            <div className="media-select-actions">
+              <button
+                className="media-select-btn"
+                onClick={selectAllLoaded}
+                title="Selects only the files currently loaded on this page"
+              >
+                Select All
+              </button>
+              <button
+                className="media-select-btn media-select-cancel"
+                onClick={exitSelectionMode}
+              >
+                Cancel
+              </button>
+              <button
+                className="media-select-btn media-select-delete"
+                disabled={!selectedIds.length || deletingSelected}
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                <Trash2 size={15} /> Delete
+              </button>
+            </div>
+          </div>
+        )}
+
+        {selectionMode && (
+          <p className="media-select-hint">
+            "Select All" only selects the files currently loaded on this page —
+            use "Load More" to load and select additional files.
+          </p>
+        )}
+
+        {/* Confirm modal for bulk delete */}
+        {showDeleteConfirm && (
+          <div
+            className="media-confirm-overlay"
+            onClick={() => setShowDeleteConfirm(false)}
+          >
+            <div
+              className="media-confirm-modal"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3>
+                Delete {selectedIds.length} file
+                {selectedIds.length === 1 ? "" : "s"}?
+              </h3>
+              <p>
+                This will permanently delete the selected media files. This
+                action cannot be undone.
+              </p>
+              <div className="media-confirm-actions">
+                <button
+                  className="media-confirm-cancel"
+                  onClick={() => setShowDeleteConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="media-confirm-delete"
+                  onClick={handleDeleteSelected}
+                >
+                  <Trash2 size={15} /> Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

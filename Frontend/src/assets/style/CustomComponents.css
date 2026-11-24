@@ -474,3 +474,41 @@
 .profile-image-inner img.zoomed {
   transform: scale(2);
 }
+
+/* =========== custom Progress =========== */
+.progress-wrap {
+  margin: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(127, 127, 127, 0.1);
+}
+.progress-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(127, 127, 127, 0.25);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: #00c29b;
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+.progress-indeterminate {
+  width: 40%;
+  animation: slide 1s ease-in-out infinite;
+}
+@keyframes slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}

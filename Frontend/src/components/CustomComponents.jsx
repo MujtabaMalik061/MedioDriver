@@ -610,3 +610,21 @@ export const ImageViewModel = ({ Image = "", onClose }) => {
     </div>
   );
 };
+
+export const ProgressBar = ({ active, label, percent, indeterminate }) => {
+  if (!active) return null;
+  return (
+    <div className="progress-wrap">
+      <div className="progress-top">
+        <span>{label}</span>
+        {!indeterminate && <span>{percent}%</span>}
+      </div>
+      <div className="progress-track">
+        <div
+          className={`progress-fill ${indeterminate ? "progress-indeterminate" : ""}`}
+          style={indeterminate ? undefined : { width: `${percent}%` }}
+        />
+      </div>
+    </div>
+  );
+};

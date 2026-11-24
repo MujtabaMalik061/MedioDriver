@@ -189,3 +189,187 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+/* ===== Bulk select & delete ===== */
+.media-record-card {
+  position: relative;
+}
+
+.media-record-card-selected {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px var(--primary-hover);
+}
+
+.media-record-checkbox {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  cursor: pointer;
+  z-index: 2;
+  transition: 0.2s;
+}
+
+.media-record-card-selected .media-record-checkbox,
+.media-record-checkbox:hover {
+  border-color: var(--primary);
+}
+
+.media-record-card-selected .media-record-checkbox {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.media-select-bar {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  max-width: calc(100vw - 40px);
+}
+
+.media-select-count {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.media-select-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.media-select-btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--card-foreground);
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: 0.2s;
+}
+
+.media-select-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.media-select-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.media-select-cancel:hover:not(:disabled) {
+  border-color: var(--muted-foreground);
+  color: var(--muted-foreground);
+}
+
+.media-select-delete:hover:not(:disabled),
+.media-confirm-delete {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #fff;
+}
+
+.media-select-delete:hover:not(:disabled) {
+  color: #fff;
+}
+
+.media-select-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin-top: 12px;
+}
+
+.media-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+}
+
+.media-confirm-modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+
+.media-confirm-modal h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+
+.media-confirm-modal p {
+  margin: 0 0 20px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+  line-height: 1.5;
+}
+
+.media-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.media-confirm-actions button {
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.media-confirm-cancel {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--card-foreground);
+}
+
+.media-confirm-cancel:hover {
+  border-color: var(--muted-foreground);
+}
+
+.media-confirm-delete {
+  border: 1px solid #ef4444;
+  background: #ef4444;
+  color: #fff;
+}
+
+.media-confirm-delete:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
