@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import "../assets/style/MediaRecords.css";
 import "../assets/style/Admin.css";
 import {
@@ -11,6 +11,7 @@ import {
   Music,
   Video,
   FileText,
+  RefreshCw,
 } from "lucide-react";
 import {
   LoadMore,
@@ -18,7 +19,11 @@ import {
   StorageSearch,
   TopBar,
 } from "../components/CustomComponents";
-import { deleteMedia, getMediaRecords } from "../services/upload.services";
+import {
+  deleteMedia,
+  getMediaRecords,
+  UpdateFile,
+} from "../services/upload.services";
 import Loader from "../components/Loader";
 import { formateDate, formatFileSize, handleDownload } from "../utils/Helper";
 import { toast } from "sonner";
@@ -260,6 +265,9 @@ const UserMediaRecords = () => {
   const [records, setRecords] = useState([]);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
+  const [updatingId, setUpdatingId] = useState(null);
+  const fileInputRef = useRef(null);
+  const updateIdRef = useRef(null);
 
   const searchDebounce = useDebounce(search, 500);
 
@@ -322,6 +330,32 @@ const UserMediaRecords = () => {
     } catch (err) {
       console.log("Failed to delete media:", err);
       toast.error(err?.message || "Failed to delete media!");
+    }
+  };
+
+  const handleUpdateMedia = (id) => {
+    updateIdRef.current = id;
+    fileInputRef.current.click();
+  };
+
+  const handleUpdateFile = async (e) => {
+    const file = e.target.files?.[0];
+    const id = updateIdRef.current;
+    e.target.value = "";
+    if (!file || !id) return;
+
+    try {
+      setUpdatingId(id);
+      const res = await UpdateFile({ id, file });
+      toast.success(res?.message || "File updated successfully");
+      setPage(1);
+      getRecords(1);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Update failed");
+      console.error("err-->", err);
+    } finally {
+      setUpdatingId(null);
+      updateIdRef.current = null;
     }
   };
 
@@ -402,6 +436,28 @@ const UserMediaRecords = () => {
                         onClick={() => window.open(item?.fileUrl, "_blank")}
                         size={16}
                       />
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleUpdateFile}
+                        style={{ display: "none" }}
+                      />
+                      <RefreshCw
+                        onClick={() =>
+                          updatingId !== item?._id &&
+                          handleUpdateMedia(item?._id)
+                        }
+                        size={16}
+                        className={updatingId === item?._id ? "spin" : ""}
+                        style={{
+                          cursor:
+                            updatingId === item?._id
+                              ? "not-allowed"
+                              : "pointer",
+                          opacity: updatingId === item?._id ? 0.5 : 1,
+                        }}
+                        title="Replace file"
+                      />
                       <Download
                         onClick={() => handleDownload(item?.fileUrl)}
                         size={16}
@@ -446,6 +502,29 @@ const UserMediaRecords = () => {
                     >
                       <Eye size={16} /> View
                     </button>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleUpdateFile}
+                      style={{ display: "none" }}
+                    />
+                    <button
+                      style={{
+                        cursor:
+                          updatingId === item?._id ? "not-allowed" : "pointer",
+                        opacity: updatingId === item?._id ? 0.5 : 1,
+                      }}
+                      onClick={() =>
+                        updatingId !== item?._id && handleUpdateMedia(item?._id)
+                      }
+                    >
+                      <RefreshCw
+                        size={16}
+                        className={updatingId === item?._id ? "spin" : ""}
+                      />{" "}
+                      Update
+                    </button>
+
                     <button onClick={() => handleDownload(item?.fileUrl)}>
                       <Download size={16} /> Download
                     </button>

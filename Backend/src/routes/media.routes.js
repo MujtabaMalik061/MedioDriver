@@ -7,6 +7,7 @@ import {
   getMediaById,
   getTodayUploads,
   getMediaRecords,
+  updateMedia,
 } from "../controllers/media.controller.js";
 import { verifyToken, verifyTokenOrApiKey } from "../middlewares/auth.middleware.js";
 
@@ -17,6 +18,12 @@ router.post("/upload-multiple-media", verifyTokenOrApiKey, upload.array("files",
 router.delete("/delete-media/:id", verifyToken, deleteMedia);
 router.get("/today-uploads", verifyToken, getTodayUploads);
 router.get("/get-media/:id", getMediaById);
+router.put(
+  "/update-media/:id",
+  verifyTokenOrApiKey,
+  upload.single("file"),
+  updateMedia,
+);
 router.get("/media-records", verifyToken, getMediaRecords);
 
 export default router;

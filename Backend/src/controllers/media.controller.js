@@ -229,7 +229,10 @@ export const getMediaById = async (req, res) => {
         "Content-Disposition": `inline; filename="${media.filename}"`,
       });
 
-      const downloadStream = bucket.openDownloadStream(media.gridfsId, { start, end: end + 1 });
+      const downloadStream = bucket.openDownloadStream(media.gridfsId, {
+        start,
+        end: end + 1,
+      });
       downloadStream.pipe(res);
     } else {
       res.writeHead(200, {
@@ -242,6 +245,87 @@ export const getMediaById = async (req, res) => {
       const downloadStream = bucket.openDownloadStream(media.gridfsId);
       downloadStream.pipe(res);
     }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateMedia = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+    const media = await Media.findById(id);
+    if (!media) {
+      return res.status(404).json({ message: "File not found" });
+    }
+    if (media.uploadBy?.toString() !== userId) {
+      return res
+        .status(403)
+        .json({ message: "Unauthorized to update this file" });
+    }
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isPremium = user.role === "premium";
+    const requiredCredits = isPremium ? 0 : 1;
+
+    if (!isPremium && user.credits < requiredCredits) {
+      return res.status(400).json({
+        message: `${requiredCredits} credit required to update this file`,
+        requiredCredits,
+        availableCredits: user.credits,
+      });
+    }
+    const bucket = getBucket();
+    const readableStream = Readable.from(req.file.buffer);
+
+    const uploadStream = bucket.openUploadStream(req.file.originalname, {
+      contentType: req.file.mimetype,
+    });
+
+    readableStream.pipe(uploadStream);
+
+    uploadStream.on("finish", async () => {
+      try {
+        const oldGridfsId = media.gridfsId;
+        media.filename = req.file.originalname;
+        media.contentType = req.file.mimetype;
+        media.size = req.file.size;
+        media.gridfsId = uploadStream.id;
+        await media.save();
+        try {
+          await bucket.delete(new mongoose.Types.ObjectId(oldGridfsId));
+        } catch (delErr) {
+          console.error("Failed to delete old GridFS file:", delErr.message);
+        }
+        if (requiredCredits > 0) {
+          user.credits -= requiredCredits;
+          await user.save();
+        }
+        res.status(200).json({
+          message: "File updated successfully",
+          fileId: media._id,
+          fileUrl: `${Backend_Url}/api/media/get-media/${media._id}`,
+          creditsUsed: requiredCredits,
+          remainingCredits: user.credits,
+        });
+      } catch (err) {
+        try {
+          await bucket.delete(uploadStream.id);
+        } catch (_) {}
+        res.status(500).json({ message: err.message });
+      }
+    });
+
+    uploadStream.on("error", (err) => {
+      res.status(500).json({ message: err.message });
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

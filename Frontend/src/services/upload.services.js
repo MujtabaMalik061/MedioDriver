@@ -53,6 +53,21 @@ export const getTodayUploads = async () => {
   }
 };
 
+export const UpdateFile = async ({ id, file }) => {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await API.put(`/api/media/update-media/${id}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return res.data;
+  } catch (err) {
+    throw err.response?.data;
+  }
+};
+
 export const getMediaRecords = async (params) => {
   try {
     const res = await API.get("/api/media/media-records", { params });
